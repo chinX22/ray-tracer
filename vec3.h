@@ -1,9 +1,6 @@
 #ifndef VEC3_H
 #define VEC3_H
 
-#include <cmath>
-#include <iostream>
-
 using namespace std;
 
 class vec3{
@@ -16,6 +13,7 @@ class vec3{
 		double  y() const { return e[1]; }
 		double  z() const { return e[2]; }
 
+		// Specify what we want to happen when we use common operators
 		vec3 operator-() const{ return vec3(-e[0], -e[1], -e[2]); }
 		double  operator[] (int i) const { return e[i]; }
 		double& operator[] (int i) { return e[i]; }
@@ -33,7 +31,7 @@ class vec3{
 			e[2] *= t;
 			return *this;
 		}
-		
+
 		vec3& operator/=(double t){
 			return (*this *= 1/t);
 		}
@@ -44,6 +42,20 @@ class vec3{
 
 		double length_squared() const{
 			return e[0]*e[0] + e[1]*e[1] + e[2]*e[2];
+		}
+
+		bool near_zero() const{
+			auto s = 1e-8;
+			// fabs() = abs()
+			return (fabs(e[0]) < s) && (fabs(e[1]) < s) && (fabs(e[2]) < s);
+		}
+
+		static vec3 random(){
+			return vec3(random_double(), random_double(), random_double());
+		}
+
+		static vec3 random(double min, double max){
+			return vec3(random_double(min, max), random_double(min, max), random_double(min, max));
 		}
 };
 
@@ -81,18 +93,45 @@ inline vec3 operator/(const vec3& v, double t) {
 
 inline double dot(const vec3& u, const vec3& v) {
 	return u.e[0] * v.e[0] +
-	       u.e[1] * v.e[1] +
-	       u.e[2] * v.e[2];
+		u.e[1] * v.e[1] +
+		u.e[2] * v.e[2];
 }
 
 inline vec3 cross(const vec3& u, const vec3& v) {
 	return vec3{u.e[1] * v.e[2] - u.e[2] * v.e[1],
-		    u.e[2] * v.e[0] - u.e[0] * v.e[2],
-		    u.e[0] * v.e[1] - u.e[1] * v.e[0]};
+		u.e[2] * v.e[0] - u.e[0] * v.e[2],
+		u.e[0] * v.e[1] - u.e[1] * v.e[0]};
 }
 
 inline vec3 unit_vector(const vec3& v) {
-    return (v / v.length());
+	return (v / v.length());
+}
+
+// Get a random vector with length of 1
+inline vec3 random_unit_vector(){
+	while (true){
+		auto temp = vec3::random(-1, 1);
+		auto length_squared = temp.length_squared();
+		if(1e-60 < length_squared && length_squared < 1){
+			// Normalizing it to 1
+			return temp / sqrt(length_squared);
+		}
+	}
+}
+
+// If random unit vector is in the same-ish direction to normal return it,
+// else invert it
+inline vec3 random_on_hemisphere(const vec3& normal){
+	vec3 on_unit_sphere = random_unit_vector();
+	if(dot(on_unit_sphere, normal) > 0){
+		return on_unit_sphere;
+	} else {
+		return -on_unit_sphere;
+	}
+}
+
+inline vec3 reflect(const vec3& v, const vec3& n){
+	return v - 2*dot(n, v)*n;
 }
 
 #endif

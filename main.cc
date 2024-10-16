@@ -1,73 +1,34 @@
-#include "color.h"
-#include "vec3.h"
-#include "ray.h"
-#include <iostream>
+#include "uber.h"
+
+#include "material.h"
+#include "camera.h"
+#include "hittable.h"
+#include "hittable_list.h"
+#include "sphere.h"
 using namespace std;
-
-double hit_sphere(const point3& center, double radius, const ray& r) {
-	vec3 oc = center - r.origin();
-	auto a = r.direction().length_squared();
-	auto h = dot(r.direction(), oc);
-	auto c = oc.length_squared() - radius*radius;
-	auto discriminant = h*h - a*c;
-	if (discriminant < 0) {
-		return -1.0;
-	} else {
-		return (h - sqrt(discriminant) ) / a;
-	}
-}
-
-color ray_color(const ray& r){
-	auto t = hit_sphere(point3(0,0,-1), 0.5, r);
-	if (t > 0.0){
-		vec3 N = unit_vector( r.at(t) - vec3(0, 0, -1));
-		return 0.5*color(N.x()+1, N.y()+1, N.z()+1);
-	}
-	vec3 unit_direction = unit_vector(r.direction());
-	auto a = 0.5*(unit_direction.y() + 1.0);
-	return (1.0-a)*color(1.0, 1.0, 1.0) + a*color(0.5, 0.7, 1.0);
-}
 
 int main(){
 
-	// Configure ratio
-	auto aspect_ratio = 16.0 / 9.0;
-	int width = 400;
-	int height = int(width / aspect_ratio);
-	height = (height < 1) ? 1 : height;
+	// World
+	hittable_list world;
 
-	// Camera settings
-	auto focal_length = 1.0;
-	auto viewport_height = 2.0;
-	auto viewport_width = viewport_height * (double(width) / height);
-	auto camera_center = point3(0, 0, 0);
+	auto material_ground = make_shared<lambertian>(color(0.8, 0.8, 0.8));
+	auto material_mid = make_shared<lambertian>(color(0.1, 0.2, 0.5));
+	auto material_left = make_shared<metal>(color(0.7, 0.3, 0.7), 0.4);
+	auto material_right = make_shared<metal>(color(0.3, 0.7, 0.7), 0);
 
-	// Calculate vectors across the horizontal and vertical viewport edges
-	auto viewport_u = vec3(viewport_width, 0, 0);
-	auto viewport_v = vec3(0, -viewport_height, 0);
+	world.add(make_shared<sphere>(point3(0,0,-2.2), .5, material_mid));
+	world.add(make_shared<sphere>(point3(-1.3,0,-2), .5, material_left));
+	world.add(make_shared<sphere>(point3(1.3,0,-2), .5, material_right));
+	world.add(make_shared<sphere>(point3(0,-100.5,-1), 100, material_ground));
+	
+	camera cam;
 
-	// Calculate the horizontal and vertical delta vectors from pixel to pixel
-	auto delta_u = viewport_u / width;
-	auto delta_v = viewport_v / height;
+	cam.aspect_ratio = 16.0 / 9.0;
+	cam.width = 400;
+	cam.samples_per_pixel = 50;
+	cam.max_depth = 50;
+	cam.focal_length = 1.5;
 
-	// Find upper left pixel
-	auto viewport_upper_left = camera_center
-		- vec3(0, 0, focal_length) - viewport_u/2 - viewport_v/2;
-	auto pixel100_loc = viewport_upper_left + 0.5 * (delta_u + delta_v);
-
-	// Renderer
-	cout << "P3" << endl << width << " " <<	
-		height << endl << "255" << endl;
-	for (int i = 0; i < height; i++){
-		clog << endl << "Scanlines remaining: " << (height - i) << " " << flush;
-		for (int j = 0; j < width; j++){
-			auto pixel_center = pixel100_loc + (i * delta_v) + (j * delta_u);
-			auto ray_direction = pixel_center - camera_center;
-			ray r(camera_center, ray_direction);
-
-			color pixel_color = ray_color(r);
-			write_color(cout, pixel_color);
-		}
-	}
-	clog << "Done.          " << endl;
+	cam.render(world);
 }
